@@ -76,17 +76,40 @@ app.post('/register', (req, res) => {
     var newotp = Math.floor(Math.random() * 9000) + 1000;
 
     const collection = db.collection('otp');
-
-    var data2={'name': name, 'email': email, 'otp': ""+newotp+""};
-    
-     collection.insert(data2, {w:1}, function(err, result) {
-       if (err) {
-         res.end("Registration Error1");
-         console.warn(err.message);  // returns error if no matching object found
-       } else {
+    collection.find({"email":email}).limit(1).sort({_id:-1}).toArray(function (err, result) {
+      if (err) {
+        console.log(err);
+      } else if (result.length) {
+         
+         ////////update otp start//////////
+         collection.findAndModify(
+          {email: email}, // query
+          [],  // sort order
+          {$set: {otp: "0000"}}, // replacement, replaces only the field "hi"
+          {}, // options
+          function(err, object) {
+          });
+         ///////update otp close///////////
         
-       }
-     });
+      }
+      else
+      {
+        /////////insert new data start here////////
+        var data2={'name': name, 'email': email, 'otp': ""+newotp+""};
+    
+        collection.insert(data2, {w:1}, function(err, result) {
+          if (err) {
+            res.end("Registration Error1");
+            console.warn(err.message);  // returns error if no matching object found
+          } else {
+           
+          }
+        });
+        ///////// insert new data close///////////
+      }
+    });
+
+
 
     res.json({"email":email,"name":name,"register":true,"msg":"Register sucessfull"});
 })
@@ -125,6 +148,23 @@ app.post('/otpverify', (req, res) => {
 
 app.get('/productlist', (req, res) => {
     res.json({"result":true,"msg":"product list"});
+})
+
+app.get('/user', (req, res) => {
+  const db = req.app.locals.db;
+  const collection = db.collection('user');
+  collection.find({}).sort({_id:-1}).toArray(function (err, result) {
+    if (err) {
+      console.log(err);
+    } else if (result.length) {
+      res.json({"result":true, "data":result});
+    }
+    else
+    {
+      res.json({"result":false, "data":[]});
+    }
+  });
+
 })
 
 app.listen(4044);
