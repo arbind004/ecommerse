@@ -75,21 +75,21 @@ app.post('/register', (req, res) => {
     //var newotp="1234";
     var newotp = Math.floor(Math.random() * 9000) + 1000;
 
-    const collection = db.collection('otp');
-    collection.find({"email":email}).limit(1).sort({_id:-1}).toArray(function (err, result) {
+    const collectionA = db.collection('otp');
+    collectionA.find({"email":email}).limit(1).sort({_id:-1}).toArray(function (err, result) {
       if (err) {
         console.log(err);
       } else if (result.length) {
-         
+        
          ////////update otp start//////////
-         collection.findAndModify(
-          {email: email}, // query
-          [],  // sort order
-          {$set: {otp: "0000"}}, // replacement, replaces only the field "hi"
+         collectionA.updateOne(
+          {"email":email}, // query
+          {$set: {"otp": ""+newotp+""}}, // replacement, replaces only the field "hi"
           {}, // options
           function(err, object) {
           });
          ///////update otp close///////////
+        console.log("Update work");
         
       }
       else
@@ -97,7 +97,7 @@ app.post('/register', (req, res) => {
         /////////insert new data start here////////
         var data2={'name': name, 'email': email, 'otp': ""+newotp+""};
     
-        collection.insert(data2, {w:1}, function(err, result) {
+        collectionA.insert(data2, {w:1}, function(err, result) {
           if (err) {
             res.end("Registration Error1");
             console.warn(err.message);  // returns error if no matching object found
@@ -126,17 +126,39 @@ app.post('/otpverify', (req, res) => {
           console.log(err);
         } else if (result.length) {
            var name = String(result[0]["name"]);
-            var data2={'name': name, 'email': email, 'akey':uid};
-    
-            collection2.insert(data2, {w:1}, function(err, result) {
-              if (err) {
-                res.end("Registration Error1");
-                console.warn(err.message);  // returns error if no matching object found
-              } else {
-               
-              }
-            });
-            res.json({"email":email,"otpverify":true,"msg":"login sucessfull"});
+
+           collection2.find({"email":email}).limit(1).sort({_id:-1}).toArray(function (err, result2) {
+            if (err) {
+              console.log(err);
+            } else if (result2.length) {
+      ////////update otp start//////////
+          collection2.updateOne(
+          {"email":email}, // query
+          {$set: {"akey": ""+uid+""}}, // replacement, replaces only the field "hi"
+          {}, // options
+          function(err, object) {
+          });
+         ///////update otp close///////////
+        console.log("Update work");
+
+            }
+            else
+            {
+              var data2={'name': name, 'email': email, 'akey':uid};    
+              collection2.insert(data2, {w:1}, function(err, result) {
+                if (err) {
+                  res.end("Registration Error1");
+                  console.warn(err.message);  // returns error if no matching object found
+                } else {
+                 
+                }
+              });
+            }
+          });
+
+
+
+            res.json({"email":email,"otpverify":true,"msg":"login sucessfull","akey":uid});
         } else {
             res.json({"email":email,"otpverify":false,"msg":"login failed"});
         }
@@ -150,9 +172,16 @@ app.get('/productlist', (req, res) => {
     res.json({"result":true,"msg":"product list"});
 })
 
-app.get('/user', (req, res) => {
+app.get('/user/:key', (req, res) => {
   const db = req.app.locals.db;
+  var key=req.params.key;
+
   const collection = db.collection('user');
+  collection.find({"akey":key}).limit(1).sort({_id:-1}).toArray(function (err, result2) {
+    if (err) {
+      console.log(err);
+    } else if (result2.length) {
+
   collection.find({}).sort({_id:-1}).toArray(function (err, result) {
     if (err) {
       console.log(err);
@@ -163,6 +192,12 @@ app.get('/user', (req, res) => {
     {
       res.json({"result":false, "data":[]});
     }
+  });
+}
+else
+{
+  res.json({"result":false,"msg":"you are not authorized", "data":[]});
+}
   });
 
 })
