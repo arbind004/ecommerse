@@ -202,6 +202,61 @@ else
 
 })
 
+app.get('/products/:key', (req, res) => {
+  const db = req.app.locals.db;
+  var key=req.params.key;
+
+  const collection = db.collection('user');
+  const collectionB = db.collection('products');
+  collection.find({"akey":key}).limit(1).sort({_id:-1}).toArray(function (err, result2) {
+    if (err) {
+      console.log(err);
+    } else if (result2.length) {
+
+  collectionB.find({}).sort({_id:-1}).toArray(function (err, result) {
+    if (err) {
+      console.log(err);
+    } else if (result.length) {
+      res.json({"result":true, "data":result});
+    }
+    else
+    {
+      res.json({"result":false, "data":[]});
+    }
+  });
+}
+else
+{
+  res.json({"result":false,"msg":"you are not authorized", "data":[]});
+}
+  });
+
+})
+
+
+app.post('/addproduct', (req, res) => {
+  const db = req.app.locals.db;
+  var name = req.body.name;
+  var price = req.body.price;
+  var img = req.body.img;
+  var desc = req.body.desc;
+  var discount = req.body.discount;
+  var pid = Math.floor(Math.random() * 900000) + 1000;
+
+  const collectionB = db.collection('products');
+
+  var data2={'pid':pid,'name': name, 'price': price, 'img':img, 'desc':desc, 'discount':discount};    
+  collectionB.insert(data2, {w:1}, function(err, result) {
+    if (err) {
+      res.end("Registration Error1");
+      console.warn(err.message);  // returns error if no matching object found
+    } else {
+     
+    }
+  });
+  res.json({"result":true,"msg":"PRODUCT ADD SUCCESSFULLY"});
+});
+
 app.listen(4044);
 console.log('Running on port 4044');
       
