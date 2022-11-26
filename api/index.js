@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 var router = express.Router();
 var MongoClient = require('mongodb').MongoClient;
 app.use(bodyParser.json())
+app.use('/static', express.static('public'));
 var dbUrl =  "mongodb+srv://ak004:shTGSHJYS2544@cluster0.y3jbuqv.mongodb.net/";
 var dbName= "ecommerse";
 
@@ -90,6 +91,7 @@ app.post('/register', (req, res) => {
           });
          ///////update otp close///////////
         console.log("Update work");
+        res.json({"email":email,"name":name,"register":true,"msg":"Re-Register sucessfull"});
         
       }
       else
@@ -106,12 +108,14 @@ app.post('/register', (req, res) => {
           }
         });
         ///////// insert new data close///////////
+        console.log("insert new");
       }
+      res.json({"email":email,"name":name,"register":true,"msg":"Register sucessfull"});
     });
 
 
 
-    res.json({"email":email,"name":name,"register":true,"msg":"Register sucessfull"});
+    
 })
 
 app.post('/otpverify', (req, res) => {
@@ -212,12 +216,11 @@ app.get('/products/:key', (req, res) => {
     if (err) {
       console.log(err);
     } else if (result2.length) {
-
-  collectionB.find({}).sort({_id:-1}).toArray(function (err, result) {
+  collectionB.find({}).sort({_id:-1}).toArray(function (err, products) {
     if (err) {
       console.log(err);
-    } else if (result.length) {
-      res.json({"result":true, "data":result});
+    } else if (products.length) {
+      res.json({"result":true, "totalresult": 0 ,"data":products});
     }
     else
     {
@@ -245,7 +248,7 @@ app.post('/addproduct', (req, res) => {
 
   const collectionB = db.collection('products');
 
-  var data2={'pid':pid,'name': name, 'price': price, 'img':img, 'desc':desc, 'discount':discount};    
+  var data2={'pid':""+pid+"",'name': name, 'price': price, 'img':img, 'desc':desc, 'discount':discount};    
   collectionB.insert(data2, {w:1}, function(err, result) {
     if (err) {
       res.end("Registration Error1");
@@ -256,6 +259,141 @@ app.post('/addproduct', (req, res) => {
   });
   res.json({"result":true,"msg":"PRODUCT ADD SUCCESSFULLY"});
 });
+
+app.get('/addcart/:pid/:key', (req, res) => {
+  const db = req.app.locals.db;
+  var key=req.params.key;
+  var pid=req.params.pid;
+
+  const collection = db.collection('user');
+  const collectionB = db.collection('products');
+  const collectionC = db.collection('cart');
+
+  collection.find({"akey":key}).limit(1).sort({_id:-1}).toArray(function (err, result2) {
+    if (err) {
+      console.log(err);
+    } else if (result2.length) {
+      var email = String(result2[0]["email"]);
+        collectionB.find({"pid":pid}).limit(1).sort({_id:-1}).toArray(function (err, result) {
+        if (err) {
+          console.log(err);
+        } else if (result.length) {
+          var name = String(result[0]["name"]);
+          var price = String(result[0]["price"]);
+          var desc = String(result[0]["desc"]);
+          var img = String(result[0]["img"]);
+          collectionC.find({"pid":pid,"email":email}).limit(1).sort({_id:-1}).toArray(function (err, result4) {
+            if (err) {
+              console.log(err);
+            } else if (result4.length) {
+              var quantity2 = parseInt(result4[0]["quantity"]);
+              var quantityUP = (quantity2+1);
+              var tpriceUpdate = (quantityUP*parseInt(price));
+              collectionC.updateOne(
+                {"pid":pid,"email":email}, // query
+                {$set: {"quantity": ""+quantityUP+"","tprice": ""+tpriceUpdate+""}}, // replacement, replaces only the field "hi"
+                {}, // options
+                function(err, object) {
+                });
+            }
+            else
+            {
+              var data2={'pid':""+pid+"",'name': name, 'price': price, 'img':img, 'desc':desc, 'quantity':"1",'tprice':price,'email':email};    
+              collectionC.insert(data2, {w:1}, function(err, result3) {
+                if (err) {
+                  res.end("Registration Error1");
+                  console.warn(err.message);  // returns error if no matching object found
+                } else {             
+                }
+              });
+            }
+          });
+
+          //here pid match 
+          res.json({"result":true,"addcart":true,"name":name,"price":price, "msg":"product add to cart sucesssfully"});
+        }
+        else
+        {
+          res.json({"result":true,"addcart":false, "msg":"pid is invalid"});
+          // pid not match    
+        }
+        });
+      //res.json({"result":true,"addcart":true, "msg":"product add to cart sucesssfully"});
+    }
+    else{
+      res.json({"result":false,"addcart":false, "msg":"you are not authorized"});
+    }
+  });
+});
+
+app.get('/removecart/:pid/:key', (req, res) => {
+  const db = req.app.locals.db;
+  var key=req.params.key;
+  var pid=req.params.pid;
+
+  const collection = db.collection('user');
+  const collectionB = db.collection('products');
+  const collectionC = db.collection('cart');
+
+  collection.find({"akey":key}).limit(1).sort({_id:-1}).toArray(function (err, result2) {
+    if (err) {
+      console.log(err);
+    } else if (result2.length) {
+      var email = String(result2[0]["email"]);
+          collectionC.find({"pid":pid,"email":email}).limit(1).sort({_id:-1}).toArray(function (err, result4) {
+            if (err) {
+              console.log(err);
+            } else if (result4.length) {
+              //here pid match 
+             
+              res.json({"result":true,"removecart":true, "msg":"product remove from cart sucesssfully"});
+            }
+            else
+            {
+              res.json({"result":true,"removecart":false, "msg":"product remove from cart failed"});
+            }
+          });
+
+      //res.json({"result":true,"addcart":true, "msg":"product add to cart sucesssfully"});
+    }
+    else{
+      res.json({"result":false,"addcart":false, "msg":"you are not authorized"});
+    }
+  });
+});
+
+app.get('/mycart/:key', (req, res) => {
+  const db = req.app.locals.db;
+  var key=req.params.key;
+
+  const collection = db.collection('user');
+  const collectionB = db.collection('cart');
+  collection.find({"akey":key}).limit(1).sort({_id:-1}).toArray(function (err, result2) {
+    if (err) {
+      console.log(err);
+    } else if (result2.length) {
+      var email = String(result2[0]["email"]);
+  collectionB.find({"email":email}).sort({_id:-1}).toArray(function (err, cart) {
+    if (err) {
+      console.log(err);
+    } else if (cart.length) {
+      res.json({"result":true, "totalresult": cart.length ,"data":cart});
+    }
+    else
+    {
+      res.json({"result":false, "data":[]});
+    }
+  });
+}
+else
+{
+  res.json({"result":false,"msg":"you are not authorized", "data":[]});
+}
+  });
+
+})
+
+
 
 app.listen(4044);
 console.log('Running on port 4044');
